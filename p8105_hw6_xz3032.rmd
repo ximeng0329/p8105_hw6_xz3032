@@ -103,7 +103,7 @@ bootstrap_result =
     models = map(strap_sample, ~lm(tmax ~ tmin, data = .x)))
 ```
 
-
+Get log(beta0*beta1)
 ```{r}
 log_beta = function(df){
 fit = lm(tmax ~ tmin, data = df)
@@ -126,18 +126,30 @@ log = log(pull(est, Intercept) * pull(est, tmin)))
 est
 }
 
-rerun(5000, log_beta(boot_sample(weather_df))) %>%
-  broom::tidy()
+logbeta_df = rerun(5000, log_beta(boot_sample(weather_df))) %>%
+  bind_rows() 
 
+#estimate of log(beta0*beta1)
+logbeta_df %>%
+  summarize(mean = mean(log),
+            lower = quantile(log, c(0.025)),
+            upper = quantile(log, c(0.975)))
+
+#plot log(beta0*beta1)
+logbeta_df %>%
+  ggplot(aes(x = log)) + geom_histogram()
+```
+
+# get R-squared
+```{r}
 r_squared = bootstrap_result %>%
   mutate(
     result2 = map(models, broom::glance)
   ) %>%
   select(-strap_sample, -models) %>%
-  unnest(result1) %>%
-  mutate(term = str_replace(term,"\\(Intercept\\)","Intercept")) %>% 
-  pivot_wider(
-    names_from = "term",
-    values_from = "estimate"
-  )
+  unnest(result2) %>%
+
+# plot R squared
+r_squared %>%
+  ggplot(aes(x = r.squared)) + geom_histogram()
 ```

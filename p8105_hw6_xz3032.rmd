@@ -10,7 +10,7 @@ library(p8105.datasets)
 library(mgcv)
 ```
 
-## Problem 2
+# Problem 2
 ```{r}
 bwt_df = read_csv("data/birthweight.csv") %>%
   drop_na() %>%
@@ -62,7 +62,7 @@ cv_df %>%
   ggplot(aes(x = model, y = rmse)) + geom_violin()
 ```
 
-## Problem 3
+# Problem 3
 
 Import data
 ```{r}
@@ -81,53 +81,56 @@ weather_df =
 
 Bootstrap
 ```{r}
-lm(tmax ~ tmin, data = weather_df) %>%
+lm(tmax ~ tmin, data = weather_df) %>% #the linear model of interest
   broom::tidy() %>% 
-  knitr::kable(digits = 3)
+  knitr::kable(digits = 3)  
 
-boot_sample = function(df) {
+boot_sample = function(df) {           #create function that can generate bootstrap sample with input of a dataframe
   sample_frac(df, replace = TRUE)
 }
 
-boot_strap = 
+boot_strap =                           # create a data frame of the 5000 boot sample with id number
   data_frame(
     strap_number = 1:5000,
     strap_sample = rerun(5000, boot_sample(weather_df))
   )
 
-bootstrap_result = 
+bootstrap_result =                  #create a data from that map the 5000 sample with its linear model
   boot_strap %>%
   mutate(
     models = map(strap_sample, ~lm(tmax ~ tmin, data = .x)))
 ```
 
-Get log(beta0*beta1)
+Get log(beta_0*beta_1)
 ```{r}
-log_beta = function(df){
-fit = lm(tmax ~ tmin, data = df)
+# create a function that can generate the value of log(beta_0*beta_1) with the input of a dataframe
+log_beta = function(df){         
+  
+fit = lm(tmax ~ tmin, data = df)    # firstly generate a linear model with the input datafram
 
-est = 
-fit %>% 
+est =                       # secondly create a data frame with the broomed result of linear model
+fit %>%
 broom::tidy() %>% 
-select(term, estimate) %>% 
-mutate(term = str_replace(term,"\\(Intercept\\)","Intercept")) %>% 
-pivot_wider(
+select(term, estimate) %>%        # select parameter of interest
+mutate(term = str_replace(term,"\\(Intercept\\)","Intercept")) %>%   # omit the "()"
+pivot_wider(                     #pivot wider so the beta_0 and beta_1 can be separated
 names_from = "term",
 values_from = "estimate"
 )
 
 est = 
-tibble(
+tibble(        # the output is est dataframe with log(beta_0*beta_1) in it
 est,
 log = log(pull(est, Intercept) * pull(est, tmin)))
 
 est
 }
 
-logbeta_df = rerun(5000, log_beta(boot_sample(weather_df))) %>%
-  bind_rows() 
+#rerun the function for 5000 times, each time the dataframe input is a bootstrap sample generate from the weather_df
+logbeta_df = rerun(5000, log_beta(boot_sample(weather_df))) %>% 
+  bind_rows()
 
-#estimate of log(beta0*beta1)
+#summarize the mean and CI for log(beta_0*beta_1)
 logbeta_df %>%
   summarize(mean = mean(log),
             lower = quantile(log, c(0.025)),
@@ -135,26 +138,28 @@ logbeta_df %>%
 
 #plot log(beta0*beta1)
 logbeta_df %>%
-  ggplot(aes(x = log)) + geom_histogram()
+  ggplot(aes(x = log)) + geom_density() + labs(title = "Distributiion of Log(beta_0*beta_1)", x = "log(beta_0*beta_1)", y = "density")
 ```
+The distribution of `log(beta_o*beta_1)` follows a normal distribution, with mean around 2.01.  The 95% CI for `log(beta_o*beta_1)` is (1.96, 2.06)
 
 # get R-squared
 ```{r}
-r_squared = bootstrap_result %>%
+r_squared = bootstrap_result %>%  #using the dataframe with 5000 linear model generated from bootstrap sample
   mutate(
-    result2 = map(models, broom::glance)
+    result2 = map(models, broom::glance)   # to get r-squared
   ) %>%
-  select(-strap_sample, -models) %>%
+  select(-strap_sample, -models) %>%    #select parameter of interest
   unnest(result2) %>%
   janitor::clean_names()
 
 # plot R squared
 r_squared %>%
-  ggplot(aes(x = r.squared)) + geom_histogram()
+  ggplot(aes(x = r_squared)) + geom_histogram() + labs(title = "Distribution of R-squared", x = "R-squared")
 
-# get mean and CI
+# get mean and CI of R-squared
 r_squared %>%
-  summarize(mean = mean(r.squared),
-            lower = quantile(r.squared, c(0.025)),
-            upper = quantile(r.squared, c(0.975)))
+  summarize(mean = mean(r_squared),
+            lower = quantile(r_squared, c(0.025)),
+            upper = quantile(r_squared, c(0.975)))
 ```
+`R-squared` also follows a normal distribution with mean around 0.911.  The 95% CI is (0.894, 0.927)

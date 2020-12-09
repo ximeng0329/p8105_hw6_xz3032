@@ -1,0 +1,32 @@
+---
+title: "HW6 by Ximeng"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(modelr)
+library(p8105.datasets)
+```
+
+## Problem 1
+```{r}
+homicide_df = 
+  read_csv("data/homicide-data.csv", na = c("", "NA", "Unknown")) %>%
+  mutate(
+    city_state = str_c(city, state, sep = ","),
+    victim_age = as.numeric(victim_age),
+    resolution = case_when(
+      disposition == "Closed without arrest" ~0,
+      disposition == "Open/No arrest"        ~0,
+      disposition == "Closed by arrest"       ~1)) %>%
+  filter(city_state != "Tulsa, AL") %>%
+  select(city_state, resolution, victim_age, victim_race, victim_sex)
+```
+
+Start with one city
+```{r}
+baltimore_df = 
+  homicide_df %>%
+  filter(city_state == "Baltimore, MD")
+```

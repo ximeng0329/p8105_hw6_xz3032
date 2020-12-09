@@ -10,8 +10,6 @@ library(p8105.datasets)
 library(mgcv)
 ```
 
-
-
 ## Problem 2
 ```{r}
 bwt_df = read_csv("data/birthweight.csv") %>%
@@ -148,8 +146,15 @@ r_squared = bootstrap_result %>%
   ) %>%
   select(-strap_sample, -models) %>%
   unnest(result2) %>%
+  janitor::clean_names()
 
 # plot R squared
 r_squared %>%
   ggplot(aes(x = r.squared)) + geom_histogram()
+
+# get mean and CI
+r_squared %>%
+  summarize(mean = mean(r.squared),
+            lower = quantile(r.squared, c(0.025)),
+            upper = quantile(r.squared, c(0.975)))
 ```
